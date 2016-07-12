@@ -20,20 +20,23 @@ namespace Akka.Tdd.SandBox
             system.Register(new AutoFacAkkaDependencyResolver(container));
             var factory = new TddTestKitfactoryFactory(container, system.ActorSystem);
 
-            factory.WhenActorReceives<TellFatherMessage>().ItShouldDo(actor =>
+            var fatherACtorDefinition = factory.WhenActorReceives<TellFatherMessage>().ItShouldDo(actor =>
             {
-                ((ICanTell) actor.Context.Sender).Tell(new GeneralMessage("My name is " + GetType().Name + " and I got a message"), actor.Context.Sender);
-            }).SetUpMockActor<MockActor>();
+                actor.Context.Sender.Tell(new GeneralMessage("My name is " + GetType().Name + " and I got a message"));
+            });
 
             IActorRef factherActor = null;
-            var brother = factory.WhenActorStarts().ItShouldDo(actor =>
+            var brotherActorDefinition = factory.WhenActorStarts().ItShouldDo(actor =>
             {
                 factherActor = actor.Context.System.CreateActor(actor.ActorChildrenOrDependencies.Item1.ActorType);
             }).WhenActorReceives<TellFatherMessage>().ItShouldDo(actor =>
             {
                 factherActor.Tell(new GeneralMessage("My name is " + GetType().Name + " and I got a message"));
-                ((ICanTell) actor.Context.Sender).Tell(new TellFatherCompletedMessage(true), actor.Context.Sender);
-            }).CreateMockActorRef<MockActor<MockActor>>();
+                 actor.Context.Sender.Tell(new TellFatherCompletedMessage(true));
+            });
+
+            fatherACtorDefinition.SetUpMockActor<MockActor>();
+            var brother = brotherActorDefinition.CreateMockActorRef<MockActor<MockActor>>();
 
             //Act
             var task = brother.Ask(new TellFatherMessage("Hello"));
